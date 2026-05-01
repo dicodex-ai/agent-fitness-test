@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Fitness Test — 8Hats Lab</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg-deep: #0a0e1a;
+  --bg-panel: rgba(16, 22, 40, 0.85);
+  --border: rgba(78, 197, 247, 0.12);
+  --border-active: rgba(78, 197, 247, 0.4);
+  --cyan: #4EC5F7;
+  --cyan-dim: rgba(78, 197, 247, 0.15);
+  --cyan-glow: rgba(78, 197, 247, 0.3);
+  --amber: #F4A261;
+  --amber-dim: rgba(244, 162, 97, 0.15);
+  --emerald: #6BC477;
+  --emerald-dim: rgba(107, 196, 119, 0.15);
+  --crimson: #E15263;
+  --crimson-dim: rgba(225, 82, 99, 0.15);
+  --text: #c8d6e5;
+  --text-bright: #e8f0f8;
+  --text-dim: #5a6a7a;
+  --text-muted: #3a4a5a;
+  --grid-line: rgba(78, 197, 247, 0.04);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg-deep);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  z-index: 100;
+}
+
+.container { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 0 24px; }
+
+header { padding: 60px 0 40px; text-align: center; position: relative; }
+header::after {
+  content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 200px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan-glow), transparent);
+}
+
+.badge {
+  display: inline-block; font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--cyan); border: 1px solid var(--border-active);
+  padding: 6px 18px; border-radius: 2px; margin-bottom: 24px;
+  background: var(--cyan-dim); animation: fadeSlideDown 0.8s ease-out;
+}
+
+h1 {
+  font-family: 'DM Serif Display', serif; font-size: clamp(32px, 5vw, 56px);
+  color: var(--text-bright); line-height: 1.15; letter-spacing: -0.5px;
+  margin-bottom: 16px; animation: fadeSlideDown 0.8s ease-out 0.1s both;
+}
+h1 em { font-style: italic; color: var(--cyan); }
+
+.subtitle {
+  font-family: 'JetBrains Mono', monospace; font-size: 13px;
+  color: var(--text-dim); letter-spacing: 0.5px;
+  animation: fadeSlideDown 0.8s ease-out 0.2s both;
+}
+
+.main-grid {
+  display: grid; grid-template-columns: 1fr 420px; gap: 32px;
+  padding: 48px 0 60px; align-items: start;
+}
+@media (max-width: 1000px) {
+  .main-grid { grid-template-columns: 1fr; }
+  .sticky-panel { position: static !important; }
+}
+
+.questionnaire { display: flex; flex-direction: column; gap: 24px; }
+
+.axis-card {
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: 6px; padding: 28px 32px; backdrop-filter: blur(12px);
+  transition: border-color 0.4s, box-shadow 0.4s;
+  animation: fadeSlideUp 0.6s ease-out both;
+}
+.axis-card:nth-child(1) { animation-delay: 0.3s; }
+.axis-card:nth-child(2) { animation-delay: 0.4s; }
+.axis-card:nth-child(3) { animation-delay: 0.5s; }
+.axis-card:nth-child(4) { animation-delay: 0.6s; }
+.axis-card:nth-child(5) { animation-delay: 0.7s; }
+.axis-card.active {
+  border-color: var(--border-active);
+  box-shadow: 0 0 30px var(--cyan-dim), inset 0 0 30px rgba(78, 197, 247, 0.03);
+}
+
+.axis-header { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+
+.axis-symbol {
+  font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700;
+  color: var(--cyan); background: var(--cyan-dim);
+  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  border-radius: 4px; border: 1px solid rgba(78, 197, 247, 0.2); flex-shrink: 0;
+}
+
+.axis-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--text-bright); }
+.axis-question { font-size: 14px; color: var(--text-dim); margin-bottom: 16px; line-height: 1.5; }
+.options { display: flex; flex-direction: column; gap: 6px; }
+
+.option {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border: 1px solid transparent; border-radius: 4px;
+  cursor: pointer; transition: all 0.25s; font-size: 13px; line-height: 1.45; color: var(--text);
+}
+.option:hover { background: rgba(78, 197, 247, 0.04); border-color: var(--border); }
+.option.selected { background: var(--cyan-dim); border-color: var(--border-active); color: var(--text-bright); }
+
+.option-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--text-muted); flex-shrink: 0; transition: all 0.25s;
+}
+.option.selected .option-dot {
+  border-color: var(--cyan); background: var(--cyan); box-shadow: 0 0 8px var(--cyan-glow);
+}
+
+.option-score {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--text-muted); margin-left: auto; flex-shrink: 0;
+}
+.option.selected .option-score { color: var(--cyan); }
+
+.sticky-panel {
+  position: sticky; top: 24px; display: flex; flex-direction: column; gap: 20px;
+  animation: fadeSlideUp 0.6s ease-out 0.4s both;
+}
+
+.radar-panel {
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: 6px; padding: 28px; backdrop-filter: blur(12px);
+  position: relative; overflow: hidden;
+}
+.radar-panel::before {
+  content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+  background: radial-gradient(circle at 50% 50%, var(--cyan-dim) 0%, transparent 50%);
+  opacity: 0.3; animation: radarPulse 4s ease-in-out infinite;
+}
+@keyframes radarPulse {
+  0%, 100% { opacity: 0.15; transform: scale(0.95); }
+  50% { opacity: 0.3; transform: scale(1.05); }
+}
+
+.radar-canvas-wrap { position: relative; width: 100%; aspect-ratio: 1; }
+canvas#radar { width: 100%; height: 100%; position: relative; z-index: 1; }
+
+.score-panel {
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: 6px; padding: 24px 28px; backdrop-filter: blur(12px); text-align: center;
+}
+.score-row { display: flex; align-items: baseline; justify-content: center; gap: 8px; margin-bottom: 8px; }
+.score-value {
+  font-family: 'JetBrains Mono', monospace; font-size: 48px; font-weight: 700;
+  color: var(--cyan); transition: color 0.5s; line-height: 1;
+}
+.score-max { font-family: 'JetBrains Mono', monospace; font-size: 18px; color: var(--text-muted); }
+.score-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--text-dim); margin-bottom: 16px;
+}
+
+.m-level {
+  display: inline-block; font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; font-weight: 600; padding: 6px 16px; border-radius: 3px; transition: all 0.5s;
+}
+.m-level.m1 { color: var(--crimson); background: var(--crimson-dim); border: 1px solid rgba(225,82,99,0.3); }
+.m-level.m2 { color: var(--amber); background: var(--amber-dim); border: 1px solid rgba(244,162,97,0.3); }
+.m-level.m3 { color: var(--cyan); background: var(--cyan-dim); border: 1px solid rgba(78,197,247,0.3); }
+.m-level.m4 { color: var(--emerald); background: var(--emerald-dim); border: 1px solid rgba(107,196,119,0.3); }
+.m-level-desc { font-size: 12px; color: var(--text-dim); margin-top: 8px; line-height: 1.4; }
+
+.panel-box {
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: 6px; padding: 20px 24px; backdrop-filter: blur(12px);
+}
+.panel-title {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--text-dim); margin-bottom: 14px;
+}
+.panel-title.amber { color: var(--amber); }
+
+.competitor-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; font-size: 12px; }
+.competitor-name { font-family: 'JetBrains Mono', monospace; width: 80px; color: var(--text-dim); flex-shrink: 0; font-size: 11px; }
+.competitor-track { flex: 1; height: 6px; background: rgba(255,255,255,0.04); border-radius: 3px; overflow: hidden; }
+.competitor-fill { height: 100%; border-radius: 3px; transition: width 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+.competitor-score { font-family: 'JetBrains Mono', monospace; width: 36px; text-align: right; font-size: 11px; flex-shrink: 0; }
+
+.metric-item { display: flex; align-items: baseline; gap: 10px; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.metric-item:last-child { border-bottom: none; }
+.metric-val { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; color: var(--cyan); flex-shrink: 0; }
+.metric-desc { font-size: 11px; color: var(--text-dim); line-height: 1.4; }
+
+.gap-item { padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 12px; line-height: 1.5; }
+.gap-item:last-child { border-bottom: none; }
+.gap-axis { font-family: 'JetBrains Mono', monospace; color: var(--crimson); font-weight: 600; font-size: 11px; }
+.gap-rec { color: var(--text-dim); margin-top: 2px; }
+
+.actions { display: flex; gap: 10px; margin-top: 4px; }
+.btn {
+  flex: 1; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 1px;
+  text-transform: uppercase; padding: 10px 16px; border-radius: 4px;
+  border: 1px solid var(--border); background: transparent; color: var(--text-dim);
+  cursor: pointer; transition: all 0.3s;
+}
+.btn:hover { border-color: var(--border-active); color: var(--cyan); background: var(--cyan-dim); }
+.btn-primary { background: var(--cyan-dim); border-color: var(--border-active); color: var(--cyan); }
+
+footer {
+  text-align: center; padding: 40px 0 60px;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--text-muted); border-top: 1px solid var(--border);
+}
+footer a { color: var(--text-dim); text-decoration: none; }
+footer a:hover { color: var(--cyan); }
+
+@keyframes fadeSlideDown { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="badge">TR-2026-003 Diagnostic</div>
+    <h1>Agent <em>Fitness</em> Test</h1>
+    <p class="subtitle">Evaluate your AI agent across 5 autonomy axes</p>
+  </header>
+
+  <div class="main-grid">
+    <div class="questionnaire" id="questionnaire"></div>
+    <div class="sticky-panel">
+      <div class="radar-panel"><div class="radar-canvas-wrap"><canvas id="radar" width="800" height="800"></canvas></div></div>
+      <div class="score-panel">
+        <div class="score-row"><span class="score-value" id="scoreValue">0.00</span><span class="score-max">/ 1.00</span></div>
+        <div class="score-label">Autonomy Score</div>
+        <div class="m-level m1" id="mLevel">M1 Contextual</div>
+        <div class="m-level-desc" id="mDesc">Session-only, no persistence</div>
+      </div>
+      <div class="panel-box" id="competitorsPanel"><div class="panel-title">Competitive Position</div><div id="competitorBars"></div></div>
+      <div class="panel-box" id="gapPanel" style="display:none"><div class="panel-title amber">Gap Analysis</div><div id="gapList"></div></div>
+      <div class="panel-box">
+        <div class="panel-title">Key Research Metrics</div>
+        <div class="metric-item"><span class="metric-val">2x</span><span class="metric-desc">Knowledge Advantage (Inverted Bloom, N=264)</span></div>
+        <div class="metric-item"><span class="metric-val">JIS 2.6</span><span class="metric-desc">Catastrophic judgment inflation threshold</span></div>
+        <div class="metric-item"><span class="metric-val">~15</span><span class="metric-desc">Instincts for 90% of maximum KA</span></div>
+        <div class="metric-item"><span class="metric-val">28.9%</span><span class="metric-desc">Optimal disagreement rate d*</span></div>
+        <div class="metric-item"><span class="metric-val">64%</span><span class="metric-desc">Instinct survival rate (Markov chain)</span></div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="resetBtn">Reset</button>
+        <button class="btn btn-primary" id="shareBtn">Share Results</button>
+      </div>
+    </div>
+  </div>
+  <footer>Based on <a href="formal/TR-2026-003-agent-dna.pdf">TR-2026-003: The 8Hats Agent</a> &middot; 8Hats Lab, 2026</footer>
+</div>
+
+<script>
+const AXES = [
+  { key:'W', title:'World Model Update',
+    question:'Does your agent have a persistent identity file that evolves?',
+    options:[
+      {label:'No identity file',score:0},
+      {label:'Static CLAUDE.md, rarely updated',score:0.2},
+      {label:'CLAUDE.md + memory files, manually updated',score:0.4},
+      {label:'Evolving identity with learning integration',score:0.7},
+      {label:'Self-updating world model with confidence-managed knowledge',score:1.0}
+    ]},
+  { key:'F', title:'Free Will',
+    question:'How does your agent handle ambiguous decisions?',
+    options:[
+      {label:'Follows instructions literally, no deviation',score:0},
+      {label:'May ask clarifying questions',score:0.3},
+      {label:'Proposes alternatives when instructions seem suboptimal',score:0.5},
+      {label:'Disagrees with evidence when data contradicts instructions',score:0.7},
+      {label:'Calibrated disagreement rate (~29%) with trust management',score:1.0}
+    ]},
+  { key:'R', title:'Result Responsibility',
+    question:'What is your agent accountable for?',
+    options:[
+      {label:'"Told to dig, I dig" — following steps only',score:0},
+      {label:'Completing assigned tasks',score:0.3},
+      {label:'Achieving outcomes, adapting approach as needed',score:0.6},
+      {label:'Owning results + proactively identifying risks',score:0.8},
+      {label:'Full outcome ownership + quality self-assessment + improvement proposals',score:1.0}
+    ]},
+  { key:'S', title:'State Awareness',
+    question:'Can your agent assess its own performance quality?',
+    options:[
+      {label:'No self-assessment capability',score:0},
+      {label:'Basic error detection (syntax, formatting)',score:0.2},
+      {label:'Tracks what it knows vs doesn\'t know',score:0.5},
+      {label:'Health diagnostics: staleness, contradictions, coverage gaps',score:0.7},
+      {label:'Full self-monitoring: collapse risk, confidence distribution, falsifiability audit',score:1.0}
+    ]},
+  { key:'E', title:'Self-Evolution',
+    question:'How does your agent improve over time?',
+    options:[
+      {label:'No improvement mechanism',score:0},
+      {label:'Manual updates by human operator',score:0.2},
+      {label:'Automatic instinct/pattern extraction from sessions',score:0.4},
+      {label:'Extraction + promotion/decay + diversity control',score:0.7},
+      {label:'Meta-learning: agent learns HOW to learn, strategy itself evolves',score:1.0}
+    ]}
+];
+
+const COMPETITORS = [
+  {name:'Script',score:0.00,color:'#444'},{name:'Cursor',score:0.12,color:'#666'},
+  {name:'Claude',score:0.26,color:'#888'},{name:'ECC',score:0.30,color:'#999'},
+  {name:'OpenClaw',score:0.36,color:'#aaa'},{name:'CrewAI',score:0.38,color:'#bbb'},
+  {name:'8Hats',score:0.74,color:'#6BC477'}
+];
+
+const GAPS_CFG = {
+  W:{low:0.4,rec:'Add evolving SOUL.md with /sync integration from accumulated instincts'},
+  F:{low:0.5,rec:'Implement evidence-backed pushback — agent should disagree when data says so'},
+  R:{low:0.6,rec:'Shift from task completion to outcome ownership with proactive risk identification'},
+  S:{low:0.5,rec:'Add /health diagnostics: collapse detection, staleness tracking, falsifiability audit'},
+  E:{low:0.4,rec:'Implement /extract + /evolve loop — extraction strategy itself evolves'}
+};
+
+const state = {W:null,F:null,R:null,S:null,E:null};
+const animScores = {W:0,F:0,R:0,S:0,E:0};
+const targetScores = {W:0,F:0,R:0,S:0,E:0};
+let animFrame = null;
+
+function buildQuestions() {
+  const wrap = document.getElementById('questionnaire');
+  AXES.forEach(function(axis, ai) {
+    const card = document.createElement('div');
+    card.className = 'axis-card';
+    card.id = 'card-' + axis.key;
+    card.dataset.axis = axis.key;
+    card.style.animationDelay = (0.3 + ai * 0.1) + 's';
+
+    const hdr = document.createElement('div');
+    hdr.className = 'axis-header';
+    const sym = document.createElement('div');
+    sym.className = 'axis-symbol';
+    sym.textContent = axis.key;
+    const ttl = document.createElement('div');
+    ttl.className = 'axis-title';
+    ttl.textContent = axis.title;
+    hdr.appendChild(sym);
+    hdr.appendChild(ttl);
+
+    const q = document.createElement('div');
+    q.className = 'axis-question';
+    q.textContent = axis.question;
+
+    const opts = document.createElement('div');
+    opts.className = 'options';
+
+    axis.options.forEach(function(opt) {
+      const row = document.createElement('div');
+      row.className = 'option';
+      row.dataset.axis = axis.key;
+      row.dataset.score = opt.score;
+
+      const dot = document.createElement('div');
+      dot.className = 'option-dot';
+      const lbl = document.createElement('span');
+      lbl.textContent = opt.label;
+      const sc = document.createElement('span');
+      sc.className = 'option-score';
+      sc.textContent = opt.score.toFixed(1);
+
+      row.appendChild(dot);
+      row.appendChild(lbl);
+      row.appendChild(sc);
+
+      row.addEventListener('click', function() { selectOption(row); });
+      opts.appendChild(row);
+    });
+
+    card.appendChild(hdr);
+    card.appendChild(q);
+    card.appendChild(opts);
+    wrap.appendChild(card);
+  });
+}
+
+function selectOption(el) {
+  var axis = el.dataset.axis;
+  var score = parseFloat(el.dataset.score);
+  state[axis] = score;
+  targetScores[axis] = score;
+
+  var siblings = el.parentNode.querySelectorAll('.option');
+  for (var i = 0; i < siblings.length; i++) siblings[i].classList.remove('selected');
+  el.classList.add('selected');
+  el.closest('.axis-card').classList.add('active');
+
+  updateResults();
+  startAnimation();
+}
+
+function updateResults() {
+  var answered = [];
+  for (var k in state) { if (state[k] !== null) answered.push(state[k]); }
+  var total = answered.length > 0 ? answered.reduce(function(a,b){return a+b;},0) / 5 : 0;
+
+  document.getElementById('scoreValue').textContent = total.toFixed(2);
+
+  var ml = document.getElementById('mLevel');
+  var md = document.getElementById('mDesc');
+  var sv = document.getElementById('scoreValue');
+  ml.className = 'm-level';
+  if (total < 0.15) { ml.classList.add('m1'); ml.textContent='M1 Contextual'; md.textContent='Session-only, no persistence'; sv.style.color='var(--crimson)'; }
+  else if (total < 0.35) { ml.classList.add('m2'); ml.textContent='M2 Mnemonic'; md.textContent='Persistent artifacts, manual loading'; sv.style.color='var(--amber)'; }
+  else if (total < 0.60) { ml.classList.add('m3'); ml.textContent='M3 Instrumental'; md.textContent='Tools built from knowledge'; sv.style.color='var(--cyan)'; }
+  else { ml.classList.add('m4'); ml.textContent='M4 Constitutional'; md.textContent='Knowledge as identity'; sv.style.color='var(--emerald)'; }
+
+  updateCompetitors(total);
+  updateGaps();
+}
+
+function updateCompetitors(yourScore) {
+  var all = COMPETITORS.map(function(c){return {name:c.name,score:c.score,color:c.color,isYou:false};});
+  all.push({name:'You',score:yourScore,color:'#4EC5F7',isYou:true});
+  all.sort(function(a,b){return a.score-b.score;});
+
+  var wrap = document.getElementById('competitorBars');
+  while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
+
+  all.forEach(function(c) {
+    var bar = document.createElement('div');
+    bar.className = 'competitor-bar';
+
+    var nm = document.createElement('span');
+    nm.className = 'competitor-name';
+    nm.textContent = c.name;
+    nm.style.color = c.isYou ? '#4EC5F7' : '';
+    nm.style.fontWeight = c.isYou ? '600' : '';
+
+    var track = document.createElement('div');
+    track.className = 'competitor-track';
+    var fill = document.createElement('div');
+    fill.className = 'competitor-fill';
+    fill.style.width = (c.score * 100) + '%';
+    fill.style.background = c.isYou ? '#4EC5F7' : c.color;
+    if (c.isYou) fill.style.boxShadow = '0 0 8px rgba(78,197,247,0.3)';
+    track.appendChild(fill);
+
+    var sc = document.createElement('span');
+    sc.className = 'competitor-score';
+    sc.textContent = c.score.toFixed(2);
+    sc.style.color = c.isYou ? '#4EC5F7' : c.color;
+
+    bar.appendChild(nm);
+    bar.appendChild(track);
+    bar.appendChild(sc);
+    wrap.appendChild(bar);
+  });
+}
+
+function updateGaps() {
+  var panel = document.getElementById('gapPanel');
+  var list = document.getElementById('gapList');
+  while (list.firstChild) list.removeChild(list.firstChild);
+  var hasGaps = false;
+
+  Object.keys(GAPS_CFG).forEach(function(axis) {
+    var cfg = GAPS_CFG[axis];
+    var val = state[axis];
+    if (val !== null && val < cfg.low) {
+      hasGaps = true;
+      var axisData = AXES.find(function(a){return a.key===axis;});
+      var item = document.createElement('div');
+      item.className = 'gap-item';
+      var ax = document.createElement('div');
+      ax.className = 'gap-axis';
+      ax.textContent = axisData.title + ' (' + axis + '=' + val.toFixed(1) + ')';
+      var rec = document.createElement('div');
+      rec.className = 'gap-rec';
+      rec.textContent = cfg.rec;
+      item.appendChild(ax);
+      item.appendChild(rec);
+      list.appendChild(item);
+    }
+  });
+
+  panel.style.display = hasGaps ? 'block' : 'none';
+}
+
+function drawRadar() {
+  var canvas = document.getElementById('radar');
+  var ctx = canvas.getContext('2d');
+  var w = canvas.width, h = canvas.height;
+  var cx = w/2, cy = h/2;
+  var R = Math.min(w,h) * 0.38;
+  var keys = ['W','F','R','S','E'];
+  var n = 5;
+
+  function angleFor(i) { return (Math.PI*2*i/n) - Math.PI/2; }
+  function pointAt(i, r) { var a=angleFor(i); return [cx+Math.cos(a)*r, cy+Math.sin(a)*r]; }
+
+  ctx.clearRect(0,0,w,h);
+
+  for (var ring=1; ring<=5; ring++) {
+    var r=R*ring/5;
+    ctx.beginPath();
+    for (var i=0;i<=n;i++) { var p=pointAt(i%n,r); i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]); }
+    ctx.closePath();
+    ctx.strokeStyle='rgba(78,197,247,0.08)'; ctx.lineWidth=1; ctx.stroke();
+  }
+
+  for (var i=0;i<n;i++) {
+    var p=pointAt(i,R);
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(p[0],p[1]);
+    ctx.strokeStyle='rgba(78,197,247,0.1)'; ctx.lineWidth=1; ctx.stroke();
+  }
+
+  ctx.font='500 22px "JetBrains Mono", monospace';
+  ctx.fillStyle='rgba(200,214,229,0.6)'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  for (var i=0;i<n;i++) { var p=pointAt(i,R+40); ctx.fillText(keys[i],p[0],p[1]); }
+
+  var hatsScores=[1.0,0.7,0.7,0.7,0.8];
+  ctx.beginPath();
+  for (var i=0;i<=n;i++) { var p=pointAt(i%n,R*hatsScores[i%n]); i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]); }
+  ctx.closePath();
+  ctx.strokeStyle='rgba(107,196,119,0.25)'; ctx.lineWidth=1.5;
+  ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='rgba(107,196,119,0.04)'; ctx.fill();
+
+  var scores=keys.map(function(k){return animScores[k];});
+  if (scores.some(function(s){return s>0;})) {
+    ctx.beginPath();
+    for (var i=0;i<=n;i++) { var p=pointAt(i%n,R*scores[i%n]); i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]); }
+    ctx.closePath();
+    ctx.fillStyle='rgba(78,197,247,0.12)'; ctx.fill();
+    ctx.strokeStyle='rgba(78,197,247,0.7)'; ctx.lineWidth=2.5; ctx.stroke();
+
+    for (var i=0;i<n;i++) {
+      if (scores[i]>0) {
+        var p=pointAt(i,R*scores[i]);
+        ctx.beginPath(); ctx.arc(p[0],p[1],5,0,Math.PI*2); ctx.fillStyle='#4EC5F7'; ctx.fill();
+        ctx.beginPath(); ctx.arc(p[0],p[1],8,0,Math.PI*2);
+        ctx.strokeStyle='rgba(78,197,247,0.3)'; ctx.lineWidth=1.5; ctx.stroke();
+      }
+    }
+  }
+
+  ctx.font='300 16px "DM Sans", sans-serif';
+  ctx.fillStyle='rgba(107,196,119,0.5)'; ctx.textAlign='right';
+  ctx.fillText('--- 8Hats reference', w-20, h-20);
+}
+
+function startAnimation() { if (!animFrame) animFrame=requestAnimationFrame(animate); }
+
+function animate() {
+  var moving=false;
+  for (var k in animScores) {
+    var diff=targetScores[k]-animScores[k];
+    if (Math.abs(diff)>0.002) { animScores[k]+=diff*0.12; moving=true; }
+    else animScores[k]=targetScores[k];
+  }
+  drawRadar();
+  if (moving) animFrame=requestAnimationFrame(animate); else animFrame=null;
+}
+
+function resetAll() {
+  for (var k in state) { state[k]=null; targetScores[k]=0; }
+  document.querySelectorAll('.option').forEach(function(o){o.classList.remove('selected');});
+  document.querySelectorAll('.axis-card').forEach(function(c){c.classList.remove('active');});
+  updateResults(); startAnimation();
+}
+
+function shareResults() {
+  var parts=[];
+  for (var k in state) parts.push(k+'='+(state[k]!==null?state[k]:''));
+  var url=window.location.href.split('#')[0]+'#'+parts.join('&');
+  navigator.clipboard.writeText(url).then(function(){
+    var btn=document.getElementById('shareBtn');
+    btn.textContent='Copied!';
+    setTimeout(function(){btn.textContent='Share Results';},2000);
+  });
+}
+
+function loadFromHash() {
+  var hash=window.location.hash.slice(1);
+  if (!hash) return;
+  hash.split('&').forEach(function(pair){
+    var parts=pair.split('=');
+    var k=parts[0], v=parts[1];
+    if (k && v!=='' && v!=='null') {
+      var axis=AXES.find(function(a){return a.key===k;});
+      if (!axis) return;
+      var score=parseFloat(v);
+      state[k]=score; targetScores[k]=score; animScores[k]=score;
+      var card=document.getElementById('card-'+k);
+      if (card) {
+        card.querySelectorAll('.option').forEach(function(opt){
+          if (parseFloat(opt.dataset.score)===score) { opt.classList.add('selected'); card.classList.add('active'); }
+        });
+      }
+    }
+  });
+  updateResults(); drawRadar();
+}
+
+document.getElementById('resetBtn').addEventListener('click', resetAll);
+document.getElementById('shareBtn').addEventListener('click', shareResults);
+
+buildQuestions();
+updateCompetitors(0);
+drawRadar();
+loadFromHash();
+</script>
+</body>
+</html>
