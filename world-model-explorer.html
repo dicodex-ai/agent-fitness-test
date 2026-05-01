@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>World Model Explorer — 8Hats Lab</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg: #0B1120;
+  --bg-panel: rgba(16, 22, 40, 0.88);
+  --border: rgba(78, 197, 247, 0.12);
+  --border-active: rgba(78, 197, 247, 0.4);
+  --cyan: #4EC5F7; --cyan-dim: rgba(78, 197, 247, 0.12); --cyan-glow: rgba(78, 197, 247, 0.25);
+  --amber: #F4A261; --amber-dim: rgba(244, 162, 97, 0.12);
+  --emerald: #6BC477; --emerald-dim: rgba(107, 196, 119, 0.12);
+  --crimson: #E15263;
+  --text: #c8d6e5; --text-bright: #e8f0f8; --text-dim: #5a6a7a; --text-muted: #3a4a5a;
+  --grid: rgba(78, 197, 247, 0.03);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:40px 40px;
+}
+body::after { content:''; position:fixed; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--cyan),transparent); z-index:100; }
+.container { position:relative; z-index:1; max-width:1500px; margin:0 auto; padding:0 24px; }
+header { padding:40px 0 20px; text-align:center; }
+.badge { display:inline-block; font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:500; letter-spacing:3px; text-transform:uppercase; color:var(--cyan); border:1px solid var(--border-active); padding:5px 16px; border-radius:2px; margin-bottom:18px; background:var(--cyan-dim); }
+h1 { font-family:'DM Serif Display',serif; font-size:clamp(28px,4vw,44px); color:var(--text-bright); line-height:1.2; margin-bottom:8px; }
+h1 em { font-style:italic; color:var(--cyan); }
+.subtitle { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-dim); }
+.lens-bar { display:flex; justify-content:center; gap:8px; padding:18px 0 10px; }
+.lens-btn { font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1px; text-transform:uppercase; padding:8px 20px; border-radius:3px; border:1px solid var(--border); background:transparent; color:var(--text-dim); cursor:pointer; transition:all 0.4s; }
+.lens-btn:hover { border-color:var(--border-active); color:var(--text); }
+.lens-btn.active { color:var(--cyan); border-color:var(--cyan); background:var(--cyan-dim); box-shadow:0 0 20px var(--cyan-dim); }
+.info-badge { text-align:center; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-dim); padding:6px 0; min-height:28px; }
+.loss-zero { color:var(--emerald); font-weight:600; } .loss-low { color:var(--cyan); font-weight:600; } .loss-high { color:var(--amber); font-weight:600; }
+.main-grid { display:grid; grid-template-columns:1fr 280px; gap:24px; padding-bottom:40px; }
+@media(max-width:900px) { .main-grid { grid-template-columns:1fr; } }
+.graph-area { background:var(--bg-panel); border:1px solid var(--border); border-radius:6px; padding:24px; min-height:680px; position:relative; overflow:hidden; }
+.layer-node { cursor:pointer; transition:opacity 0.5s,filter 0.5s; }
+.layer-node.dimmed { opacity:0.15; filter:blur(1px); }
+.layer-node rect { transition:stroke 0.4s,fill 0.4s,filter 0.4s; }
+.layer-node.glow-cyan rect { stroke:var(--cyan); filter:drop-shadow(0 0 8px var(--cyan-glow)); }
+.layer-node.glow-amber rect { stroke:var(--amber); filter:drop-shadow(0 0 8px rgba(244,162,97,0.3)); }
+.layer-node.glow-emerald rect { stroke:var(--emerald); filter:drop-shadow(0 0 8px rgba(107,196,119,0.3)); }
+.layer-node.glow-bright rect { stroke:rgba(200,220,240,0.4); fill:rgba(200,220,240,0.06); }
+.edge-line { transition:opacity 0.5s; stroke-dasharray:4 8; animation:flowDash 1.5s linear infinite; }
+.edge-line.dimmed { opacity:0.05; animation:none; }
+.edge-line.feedback { stroke:var(--amber) !important; stroke-width:1.5; }
+.edge-line.uncovered { stroke:var(--crimson) !important; stroke-dasharray:6 4; }
+@keyframes flowDash { to { stroke-dashoffset:-20; } }
+.group-bracket { transition:opacity 0.5s; pointer-events:none; }
+.group-bracket.hidden { opacity:0; }
+.tooltip { position:fixed; background:rgba(10,16,30,0.95); border:1px solid var(--border-active); border-radius:4px; padding:12px 16px; font-size:12px; color:var(--text); pointer-events:none; opacity:0; transition:opacity 0.2s; z-index:50; max-width:280px; line-height:1.5; }
+.tooltip.visible { opacity:1; }
+.tt-name { font-family:'JetBrains Mono',monospace; font-weight:600; color:var(--text-bright); margin-bottom:4px; }
+.tt-desc { color:var(--text-dim); margin-bottom:6px; }
+.tt-stat { font-family:'JetBrains Mono',monospace; font-size:11px; }
+.tt-covered { color:var(--emerald); } .tt-uncovered { color:var(--crimson); }
+.stats-panel { display:flex; flex-direction:column; gap:14px; }
+.stat-card { background:var(--bg-panel); border:1px solid var(--border); border-radius:6px; padding:14px 18px; }
+.stat-title { font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); margin-bottom:8px; }
+.stat-row { display:flex; justify-content:space-between; align-items:baseline; padding:3px 0; border-bottom:1px solid rgba(255,255,255,0.03); }
+.stat-row:last-child { border-bottom:none; }
+.stat-label { font-size:11px; color:var(--text-dim); }
+.stat-val { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600; color:var(--cyan); }
+.stat-val.amber { color:var(--amber); } .stat-val.crimson { color:var(--crimson); } .stat-val.emerald { color:var(--emerald); }
+.spider-bar { position:absolute; bottom:12px; left:24px; right:24px; height:30px; border:1px solid rgba(225,82,99,0.2); border-radius:4px; background:rgba(225,82,99,0.04); display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:1px; color:rgba(225,82,99,0.6); text-transform:uppercase; }
+.legend { display:flex; gap:14px; flex-wrap:wrap; margin-top:6px; }
+.legend-item { display:flex; align-items:center; gap:5px; font-size:10px; color:var(--text-dim); }
+.legend-line { width:18px; height:2px; border-radius:1px; }
+footer { text-align:center; padding:20px 0 40px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-muted); }
+footer a { color:var(--text-dim); text-decoration:none; } footer a:hover { color:var(--cyan); }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="badge">TR-2026-004 Preview</div>
+    <h1>World Model <em>Explorer</em></h1>
+    <p class="subtitle">12-layer organizational architecture &middot; 3 stakeholder lenses</p>
+  </header>
+  <div class="lens-bar">
+    <button class="lens-btn active" id="lens-cpo" data-lens="cpo">CPO &middot; Full</button>
+    <button class="lens-btn" id="lens-ceo" data-lens="ceo">CEO &middot; Strategy</button>
+    <button class="lens-btn" id="lens-cro" data-lens="cro">CRO &middot; Engineering</button>
+  </div>
+  <div class="info-badge" id="infoBadge"><span class="loss-zero">0%</span> information compression — full architectural view</div>
+  <div class="main-grid">
+    <div class="graph-area" id="graphArea">
+      <svg id="graphSvg" width="100%" height="100%" viewBox="0 0 800 660"></svg>
+      <div class="spider-bar">Spider + Guardrails &middot; Continuous Integrity Layer</div>
+    </div>
+    <div class="stats-panel">
+      <div class="stat-card">
+        <div class="stat-title">Graph Topology</div>
+        <div class="stat-row"><span class="stat-label">Layers</span><span class="stat-val">12</span></div>
+        <div class="stat-row"><span class="stat-label">Edges</span><span class="stat-val">23</span></div>
+        <div class="stat-row"><span class="stat-label">Feedback loops</span><span class="stat-val amber">2</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-title">Critical Path</div>
+        <div class="stat-row"><span class="stat-label">Length</span><span class="stat-val">9 transitions</span></div>
+        <div class="stat-row"><span class="stat-label">STK to CODE</span><span class="stat-val amber">9.7 days</span></div>
+        <div class="stat-row"><span class="stat-label">Agent sync</span><span class="stat-val">48 hours</span></div>
+        <div class="stat-row"><span class="stat-label">Ratio</span><span class="stat-val crimson">4.8x</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-title">Guardrail Coverage</div>
+        <div class="stat-row"><span class="stat-label">Covered</span><span class="stat-val emerald">19/23</span></div>
+        <div class="stat-row"><span class="stat-label">Coverage</span><span class="stat-val emerald">82.6%</span></div>
+        <div class="stat-row"><span class="stat-label">Gaps</span><span class="stat-val crimson">5</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-title">Active Lens</div>
+        <div class="stat-row"><span class="stat-label">View</span><span class="stat-val" id="lensPerspective">CPO / Architect</span></div>
+        <div class="stat-row"><span class="stat-label">Groups</span><span class="stat-val" id="lensGroups">12 (full)</span></div>
+        <div class="stat-row"><span class="stat-label">Info loss</span><span class="stat-val emerald" id="lensLoss">0%</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-title">Legend</div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-line" style="background:var(--text-dim)"></div>Edge</div>
+          <div class="legend-item"><div class="legend-line" style="background:var(--amber)"></div>Feedback</div>
+          <div class="legend-item"><div class="legend-line" style="background:var(--crimson)"></div>No guard</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer>Based on TR-2026-004 (draft) + ai-native-organization model &middot; 8Hats Lab, 2026 | <a href="agent-fitness-test.html">Agent Fitness Test</a></footer>
+</div>
+<div class="tooltip" id="tooltip"><div class="tt-name" id="ttName"></div><div class="tt-desc" id="ttDesc"></div><div class="tt-stat" id="ttStat"></div></div>
+
+<script>
+var LAYERS=[
+  {id:'STK',name:'Stakeholder Twins',desc:'Values, constraints, red lines, risks',y:10,guardrail:false,delay:'2.7d'},
+  {id:'ORG',name:'Digital Organization',desc:'Policies, decision logic, standards',y:65,guardrail:false,delay:'2.3d'},
+  {id:'ONT',name:'Ontology',desc:'Terms, entities, relations',y:120,guardrail:true,delay:'2.0d'},
+  {id:'OKR',name:'OKR / KPI Tree',desc:'Goals, metrics, thresholds',y:120,guardrail:true,delay:'2.0d',xoff:1},
+  {id:'PB',name:'Problem Factory',desc:'Problem portfolio, routing A/B/C',y:185,guardrail:true,delay:'1.7d'},
+  {id:'DP',name:'Digital Product',desc:'HYP / SIG / EXP / CR',y:240,guardrail:true,delay:'1.3d'},
+  {id:'BP',name:'Service Blueprint',desc:'REQ/SCN + SWC/HSC + trace',y:300,guardrail:true,delay:'1.0d'},
+  {id:'ARCH',name:'Architecture',desc:'ADR, UI map, API contracts',y:360,guardrail:true,delay:'16h'},
+  {id:'CODE',name:'Code',desc:'Implementation, tests, CI/CD',y:420,guardrail:true,delay:'8h'},
+  {id:'SOP',name:'SOP / Roles / Training',desc:'Processes, playbooks, SLA',y:360,guardrail:false,delay:'8h',xoff:-1},
+  {id:'EXEC',name:'Execution',desc:'Code + people + agents + processes',y:480,guardrail:false,delay:'30m'},
+  {id:'OPS',name:'Observability',desc:'Events, metrics, logs, insights',y:540,guardrail:true,delay:'n/a'}
+];
+var EDGES=[
+  {f:'STK',t:'ORG',fb:false,cov:false},{f:'ORG',t:'ONT',fb:false,cov:false},{f:'ORG',t:'OKR',fb:false,cov:false},
+  {f:'ONT',t:'PB',fb:false,cov:true},{f:'OKR',t:'PB',fb:false,cov:true},{f:'PB',t:'DP',fb:false,cov:true},
+  {f:'PB',t:'SOP',fb:false,cov:true},{f:'DP',t:'BP',fb:false,cov:true},{f:'BP',t:'ARCH',fb:false,cov:true},
+  {f:'BP',t:'SOP',fb:false,cov:true},{f:'ARCH',t:'CODE',fb:false,cov:true},{f:'CODE',t:'EXEC',fb:false,cov:true},
+  {f:'SOP',t:'EXEC',fb:false,cov:false},{f:'EXEC',t:'OPS',fb:false,cov:false},
+  {f:'OPS',t:'PB',fb:true,cov:true},{f:'OPS',t:'DP',fb:true,cov:true},
+  {f:'ONT',t:'DP',fb:false,cov:true},{f:'ONT',t:'BP',fb:false,cov:true},{f:'ONT',t:'ARCH',fb:false,cov:true},
+  {f:'ONT',t:'CODE',fb:false,cov:true},{f:'ONT',t:'OPS',fb:false,cov:true},
+  {f:'OKR',t:'DP',fb:false,cov:true},{f:'OKR',t:'BP',fb:false,cov:true}
+];
+var LENSES={
+  cpo:{name:'CPO / Architect',groups:'12 (full)',loss:'0%',lc:'emerald',badge:'<span class="loss-zero">0%</span> compression — full architectural view',m:null},
+  ceo:{name:'CEO / Investor',groups:'3 groups',loss:'46%',lc:'amber',
+    badge:'<span class="loss-high">46%</span> compression — optimized for strategy',
+    m:{'Organization':['STK','ORG','ONT','OKR'],'Team':['PB','DP','BP','ARCH','CODE','SOP'],'Individual':['EXEC','OPS']},
+    c:{'Organization':'cyan','Team':'amber','Individual':'emerald'}},
+  cro:{name:'CRO / Engineer',groups:'3 groups',loss:'40%',lc:'cyan',
+    badge:'<span class="loss-low">40%</span> compression — optimized for engineering',
+    m:{'Org Scope':['STK','ORG','ONT','OKR','PB'],'Class Scope':['DP','BP','ARCH','SOP'],'Instance Scope':['CODE','EXEC','OPS']},
+    c:{'Org Scope':'cyan','Class Scope':'amber','Instance Scope':'emerald'}}
+};
+var idx={}; LAYERS.forEach(function(l,i){idx[l.id]=i;});
+function lx(l){var b=400;if(l.xoff===1)return b+155;if(l.xoff===-1)return b-155;return b;}
+
+function build(){
+  var svg=document.getElementById('graphSvg');var ns='http://www.w3.org/2000/svg';
+  EDGES.forEach(function(e){
+    var fl=LAYERS[idx[e.f]],tl=LAYERS[idx[e.t]];
+    var x1=lx(fl),y1=fl.y+22,x2=lx(tl),y2=tl.y;
+    if(e.fb){
+      var p=document.createElementNS(ns,'path');
+      var cx=Math.min(x1,x2)-80;
+      p.setAttribute('d','M'+x1+','+y1+' C'+cx+','+(y1+40)+' '+cx+','+(y2-40)+' '+x2+','+y2);
+      p.setAttribute('fill','none');p.setAttribute('stroke','#F4A261');p.setAttribute('stroke-width','1.5');
+      p.setAttribute('class','edge-line feedback');p.dataset.f=e.f;p.dataset.t=e.t;svg.appendChild(p);
+    } else {
+      var ln=document.createElementNS(ns,'line');
+      ln.setAttribute('x1',x1);ln.setAttribute('y1',y1);ln.setAttribute('x2',x2);ln.setAttribute('y2',y2);
+      ln.setAttribute('stroke',e.cov?'rgba(78,197,247,0.25)':'#E15263');
+      ln.setAttribute('stroke-width',e.cov?'1':'1.5');
+      ln.setAttribute('class','edge-line'+(e.cov?'':' uncovered'));
+      ln.dataset.f=e.f;ln.dataset.t=e.t;svg.appendChild(ln);
+    }
+  });
+  LAYERS.forEach(function(layer){
+    var g=document.createElementNS(ns,'g');g.setAttribute('class','layer-node');g.dataset.id=layer.id;
+    var x=lx(layer),w=180,h=44,rx=x-w/2,ry=layer.y;
+    var r=document.createElementNS(ns,'rect');
+    r.setAttribute('x',rx);r.setAttribute('y',ry);r.setAttribute('width',w);r.setAttribute('height',h);
+    r.setAttribute('rx',4);r.setAttribute('fill','rgba(16,22,40,0.9)');r.setAttribute('stroke','rgba(78,197,247,0.15)');
+    var t1=document.createElementNS(ns,'text');
+    t1.setAttribute('x',rx+12);t1.setAttribute('y',ry+18);t1.setAttribute('font-family','JetBrains Mono,monospace');
+    t1.setAttribute('font-size','11');t1.setAttribute('font-weight','600');t1.setAttribute('fill','#4EC5F7');t1.textContent=layer.id;
+    var t2=document.createElementNS(ns,'text');
+    t2.setAttribute('x',rx+12);t2.setAttribute('y',ry+34);t2.setAttribute('font-family','DM Sans,sans-serif');
+    t2.setAttribute('font-size','10');t2.setAttribute('fill','#8a9ab0');t2.textContent=layer.name;
+    g.appendChild(r);g.appendChild(t1);g.appendChild(t2);
+    if(!layer.guardrail){
+      var w2=document.createElementNS(ns,'text');w2.setAttribute('x',rx+w-14);w2.setAttribute('y',ry+16);
+      w2.setAttribute('font-size','10');w2.setAttribute('fill','#E15263');w2.textContent='⚠';g.appendChild(w2);
+    }
+    g.addEventListener('mouseenter',function(ev){showTT(ev,layer);});
+    g.addEventListener('mousemove',function(ev){moveTT(ev);});
+    g.addEventListener('mouseleave',hideTT);
+    svg.appendChild(g);
+  });
+  ['ceo','cro'].forEach(function(lens){
+    var ld=LENSES[lens];if(!ld.m)return;
+    Object.keys(ld.m).forEach(function(gn){
+      var ids=ld.m[gn];var minY=9999,maxY=0;
+      ids.forEach(function(id){var l=LAYERS[idx[id]];if(l.y<minY)minY=l.y;if(l.y+44>maxY)maxY=l.y+44;});
+      var cv=ld.c[gn]==='cyan'?'#4EC5F7':ld.c[gn]==='amber'?'#F4A261':'#6BC477';
+      var bg=document.createElementNS(ns,'g');bg.setAttribute('class','group-bracket hidden');bg.dataset.lens=lens;
+      var br=document.createElementNS(ns,'rect');
+      br.setAttribute('x',690);br.setAttribute('y',minY-4);br.setAttribute('width',4);br.setAttribute('height',maxY-minY+8);
+      br.setAttribute('rx',2);br.setAttribute('fill',cv);
+      var bt=document.createElementNS(ns,'text');
+      bt.setAttribute('x',702);bt.setAttribute('y',(minY+maxY)/2+4);bt.setAttribute('font-family','JetBrains Mono,monospace');
+      bt.setAttribute('font-size','10');bt.setAttribute('font-weight','500');bt.setAttribute('fill',cv);bt.textContent=gn;
+      bg.appendChild(br);bg.appendChild(bt);svg.appendChild(bg);
+    });
+  });
+}
+
+function setLens(lens){
+  var ld=LENSES[lens];
+  document.querySelectorAll('.lens-btn').forEach(function(b){b.classList.toggle('active',b.dataset.lens===lens);});
+  var ib=document.getElementById('infoBadge');
+  while(ib.firstChild)ib.removeChild(ib.firstChild);
+  var sp=document.createElement('span');
+  sp.className=lens==='cpo'?'loss-zero':lens==='cro'?'loss-low':'loss-high';
+  sp.textContent=ld.loss;
+  ib.appendChild(sp);
+  ib.appendChild(document.createTextNode(' compression — '+(lens==='cpo'?'full architectural view':lens==='ceo'?'optimized for strategy':'optimized for engineering')));
+  document.getElementById('lensPerspective').textContent=ld.name;
+  document.getElementById('lensGroups').textContent=ld.groups;
+  var ll=document.getElementById('lensLoss');ll.textContent=ld.loss;ll.className='stat-val '+ld.lc;
+  document.querySelectorAll('.layer-node').forEach(function(node){
+    var id=node.dataset.id;node.className='layer-node';
+    if(!ld.m){node.classList.add('glow-bright');return;}
+    var found=false;
+    Object.keys(ld.m).forEach(function(gn){if(ld.m[gn].indexOf(id)!==-1){found=true;node.classList.add('glow-'+ld.c[gn]);}});
+    if(!found)node.classList.add('dimmed');
+  });
+  document.querySelectorAll('.edge-line').forEach(function(edge){
+    if(!ld.m){edge.classList.remove('dimmed');return;}
+    var fv=false,tv=false;
+    Object.keys(ld.m).forEach(function(g){if(ld.m[g].indexOf(edge.dataset.f)!==-1)fv=true;if(ld.m[g].indexOf(edge.dataset.t)!==-1)tv=true;});
+    edge.classList.toggle('dimmed',!(fv&&tv));
+  });
+  document.querySelectorAll('.group-bracket').forEach(function(b){b.classList.toggle('hidden',b.dataset.lens!==lens);});
+}
+
+function showTT(ev,layer){
+  var tt=document.getElementById('tooltip');
+  document.getElementById('ttName').textContent=layer.id+' — '+layer.name;
+  document.getElementById('ttDesc').textContent=layer.desc;
+  var s=document.getElementById('ttStat');
+  while(s.firstChild)s.removeChild(s.firstChild);
+  var sp1=document.createElement('span');
+  sp1.className=layer.guardrail?'tt-covered':'tt-uncovered';
+  sp1.textContent=layer.guardrail?'Guardrail: covered':'Guardrail: NO COVERAGE';
+  s.appendChild(sp1);
+  s.appendChild(document.createElement('br'));
+  s.appendChild(document.createTextNode('Propagation to EXEC: '+layer.delay));
+  tt.classList.add('visible');moveTT(ev);
+}
+function moveTT(ev){var tt=document.getElementById('tooltip');tt.style.left=(ev.clientX+16)+'px';tt.style.top=(ev.clientY-10)+'px';}
+function hideTT(){document.getElementById('tooltip').classList.remove('visible');}
+
+build();setLens('cpo');
+document.querySelectorAll('.lens-btn').forEach(function(b){b.addEventListener('click',function(){setLens(b.dataset.lens);});});
+</script>
+</body>
+</html>
